@@ -32,6 +32,7 @@ class MainViewModel : ViewModel() {
 
     init {
 
+
         statusFilter.value = listOf("All", "AVAILABLE", "DISCARDED", "POSTPONED")
     }
     fun fetchDrugs(loadMore: Boolean = false) {
