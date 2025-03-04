@@ -20,6 +20,7 @@ class MainViewModel : ViewModel() {
     private var searchdrugs: MutableList<ResponseSearchRecItem?> = mutableListOf()
     private val loadMorePages = MutableLiveData<Boolean>()
 
+
     private val statusFilter = MutableLiveData<List<String>>()
 
     val loadMore: LiveData<Boolean> get() = loadMorePages

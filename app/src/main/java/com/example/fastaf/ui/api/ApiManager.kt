@@ -27,6 +27,8 @@ class ApiManager {
                 }
             )
 
+
+
             val sslContext = SSLContext.getInstance("TLS")
             sslContext.init(null, trustAllCerts, SecureRandom())
 

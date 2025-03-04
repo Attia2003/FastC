@@ -14,6 +14,7 @@ class SearchRecAdapter(var items :MutableList<ResponseSearchRecItem>?=null) :Rec
                 }
     }
 
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SearchRecViewHolder{
         val binding = ItemSearchBinding.inflate(LayoutInflater.from(parent.context),parent,false)
         return SearchRecViewHolder(binding)
