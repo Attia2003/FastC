@@ -5,6 +5,8 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.ProgressBar
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -39,7 +41,7 @@ class MainActivity : AppCompatActivity() {
         Log.d("drugCall", "Event received:")
         sctollpagna()
         search()
-
+        StatusSpinner()
     }
     fun initview(){
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
@@ -54,14 +56,12 @@ class MainActivity : AppCompatActivity() {
 
     fun SubcribeToLiveData() {
         Log.d("funcStartAPI", "Event received:")
-        viewModel.Strdrugs.observe(this) {
-            Log.d("LIVEDATA_UPDATE", "New drugs list: ${it?.size}")
-            adapter.updateData(it)
+        viewModel.filteredDrugs.observe(this) { drugs ->
+            Log.d("LIVEDATA_UPDATE", "New drugs list: ${drugs?.size}")
+            adapter.updateData(drugs)
         }
         viewModel.loadMore.observe(this) {
             binding.Progresspar.visibility = if (it) View.VISIBLE else View.GONE
-
-
         }
     }
 
@@ -95,6 +95,22 @@ class MainActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
+    }
+    private fun StatusSpinner() {
+        val statuses = listOf( "AVAILABLE", "DISCARDED", "POSTPONED")
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, statuses)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerStatus.adapter = adapter
+
+        binding.spinnerStatus.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedStatus = statuses[position]
+                Log.d("STATUS_FILTER", "Selected status: $selectedStatus")
+                viewModel.updateStatus(selectedStatus)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
     }
 
 

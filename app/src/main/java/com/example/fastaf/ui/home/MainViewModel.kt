@@ -6,23 +6,18 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fastaf.ui.api.ApiManager
-import com.example.fastaf.ui.api.WebServices
-import com.example.fastaf.ui.home.searchable.ResponseSearchRec
 import com.example.fastaf.ui.home.searchable.ResponseSearchRecItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
 import kotlinx.coroutines.withContext
 
 class MainViewModel : ViewModel() {
-    private val _drugs = MutableLiveData<List<ResponseSearchRecItem?>?>()
-    val Strdrugs: LiveData<List<ResponseSearchRecItem?>?> get() = _drugs
-    private var searchdrugs: MutableList<ResponseSearchRecItem?> = mutableListOf()
+
+    private val _filteredDrugs = MutableLiveData<List<ResponseSearchRecItem?>?>()
+    val filteredDrugs: LiveData<List<ResponseSearchRecItem?>?> get() = _filteredDrugs
+
+    private var allDrugs: MutableList<ResponseSearchRecItem?> = mutableListOf()
     private val loadMorePages = MutableLiveData<Boolean>()
-
-
-    private val statusFilter = MutableLiveData<List<String>>()
-
     val loadMore: LiveData<Boolean> get() = loadMorePages
 
     private var page = 1
@@ -30,12 +25,8 @@ class MainViewModel : ViewModel() {
     var isLoading = false
 
     private var currentStatus: String? = null
+    private var searchQuery: String = ""
 
-    init {
-
-
-        statusFilter.value = listOf("All", "AVAILABLE", "DISCARDED", "POSTPONED")
-    }
     fun fetchDrugs(loadMore: Boolean = false) {
         if (isLoading) return
 
@@ -44,7 +35,7 @@ class MainViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                Log.d("API_DEBUG", "Fetching page: $page")
+                Log.d("API_DEBUG", "Fetching page: $page with status: $currentStatus")
 
                 val response = withContext(Dispatchers.IO) {
                     ApiManager.getWebService().getDrugs(page, size)
@@ -54,12 +45,10 @@ class MainViewModel : ViewModel() {
                     val responseBody = response.body()
                     if (responseBody != null) {
                         Log.d("API_RESPONSE", "Received ${responseBody.size} items")
-                        val updatedList = _drugs.value.orEmpty().toMutableList().apply {
-                            addAll(responseBody)
-                        }
-                        searchdrugs = updatedList // Store for search
-                        _drugs.postValue(updatedList)
+                        if (!loadMore) allDrugs.clear()
+                        allDrugs.addAll(responseBody)
                         page++
+                        applyFilters()
                     } else {
                         Log.e("API_ERROR", "Response body is null")
                     }
@@ -76,24 +65,29 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun updateStatus(status: String?) {
+        currentStatus = if (status == "AVAILABLE") null else status
+        Log.d("", "Updated status: $currentStatus")
+        applyFilters()
+    }
+
+    fun searchDrugs(query: String) {
+        searchQuery = query
+        Log.d("SEARCH_FUNCTION", "Searching for: $query")
+        applyFilters()
+    }
+
+    private fun applyFilters() {
+        val filteredList = allDrugs.filter { item ->
+            val matchesStatus = currentStatus == null || item?.status == currentStatus
+            val matchesQuery = searchQuery.isEmpty() || item?.name?.contains(searchQuery, ignoreCase = true) == true
+            matchesStatus && matchesQuery
+        }
+        Log.d("FILTER_RESULTS", "Filtered items count: ${filteredList.size}")
+        _filteredDrugs.postValue(filteredList)
+    }
 
     fun onLoadMoreNeeded() {
         fetchDrugs(loadMore = true)
     }
-
-
-    fun searchDrugs(query: String) {
-        Log.d("SEARCH_FUNCTION", "Searching for: $query")
-
-        val filteredList = if (query.isEmpty()) {
-            searchdrugs
-        } else {
-            searchdrugs.filter { it?.name?.contains(query, ignoreCase = true) == true }
-        }
-
-        Log.d("SEARCH_RESULTS", "Found ${filteredList.size} results")
-        _drugs.postValue(filteredList)
-    }
 }
-
-
