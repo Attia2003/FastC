@@ -10,23 +10,23 @@ data class ResponseSearchRec(
 
 data class ResponseSearchRecItem(
 
-	@field:SerializedName("createdAt")
+    @field:SerializedName("createdAt")
 	val createdAt: String? = null,
 
-	@field:SerializedName("name")
+    @field:SerializedName("name")
 	val name: String? = null,
 
-	@field:SerializedName("description")
-	val description: String? = null,
+    @field:SerializedName("form")
+	val form: String? = null,
 
-	@field:SerializedName("id")
-	val id: Int? = null,
+    @field:SerializedName("id")
+	val id: Int,
 
-	@field:SerializedName("updatedAt")
+    @field:SerializedName("updatedAt")
 	val updatedAt: String? = null,
 
-	@field:SerializedName("status")
-	val status: String?=null
+    @field:SerializedName("status")
+	var status: String?=null
 
 
 )

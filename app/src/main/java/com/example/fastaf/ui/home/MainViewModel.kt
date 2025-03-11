@@ -7,87 +7,101 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fastaf.ui.api.ApiManager
 import com.example.fastaf.ui.home.searchable.ResponseSearchRecItem
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainViewModel : ViewModel() {
 
-    private val _filteredDrugs = MutableLiveData<List<ResponseSearchRecItem?>?>()
-    val filteredDrugs: LiveData<List<ResponseSearchRecItem?>?> get() = _filteredDrugs
+    private val _drugsList = MutableLiveData<List<ResponseSearchRecItem>>()  // Holds all drugs
+    val drugsList: LiveData<List<ResponseSearchRecItem>> = _drugsList
 
-    private var allDrugs: MutableList<ResponseSearchRecItem?> = mutableListOf()
-    private val loadMorePages = MutableLiveData<Boolean>()
-    val loadMore: LiveData<Boolean> get() = loadMorePages
+    private val _filteredDrugs = MutableLiveData<List<ResponseSearchRecItem>>()  // Filtered based on status
+    val filteredDrugs: LiveData<List<ResponseSearchRecItem>> = _filteredDrugs
 
-    private var page = 1
-    private val size = 20
+    private val _statusFilter = MutableLiveData<String>("AVAILABLE")  // Default filter
+    val statusFilter: LiveData<String> = _statusFilter
+
+    private val _formFilter = MutableLiveData<String>("ALL")  // Default filter: "ALL" means no form filter
+    val formFilter: LiveData<String> = _formFilter
+
+    private var _currentSearchQuery = ""
     var isLoading = false
+        private set
 
-    private var currentStatus: String? = null
-    private var searchQuery: String = ""
+    private var allPage = 1
+    private var filteredPage = 1
 
-    fun fetchDrugs(loadMore: Boolean = false) {
+    fun getDrugs(isFiltered: Boolean) {
         if (isLoading) return
-
-        isLoading = true
-        loadMorePages.value = true
 
         viewModelScope.launch {
             try {
-                Log.d("API_DEBUG", "Fetching page: $page with status: $currentStatus")
+                isLoading = true
 
-                val response = withContext(Dispatchers.IO) {
-                    ApiManager.getWebService().getDrugs(page, size)
-                }
+                val formFilterValue = _formFilter.value
+                val isUsingFilter = isFiltered && formFilterValue != "ALL"
+
+                val currentPage = if (isUsingFilter) filteredPage else allPage
+                val formQuery: String? = if (isUsingFilter) formFilterValue else null
+
+                Log.d("API_CALL", "Fetching page=$currentPage, form=$formQuery")
+
+                val response = ApiManager.getWebService().getDrugs(
+                    page = currentPage,
+                    size = 20,
+                    form = formQuery
+                )
+
+                Log.d("API_CALL", "Request URL: ${response.raw().request.url}")
 
                 if (response.isSuccessful) {
-                    val responseBody = response.body()
-                    if (responseBody != null) {
-                        Log.d("API_RESPONSE", "Received ${responseBody.size} items")
-                        if (!loadMore) allDrugs.clear()
-                        allDrugs.addAll(responseBody)
-                        page++
-                        applyFilters()
+                    val newDrugs = response.body() ?: emptyList()
+                    Log.d("API_RESPONSE", "Fetched ${newDrugs.size} items for page $currentPage")
+
+                    if (newDrugs.isNotEmpty()) {
+                        if (isUsingFilter) {
+                            val currentList = _filteredDrugs.value ?: emptyList()
+                            _filteredDrugs.postValue(currentList + newDrugs)
+                            filteredPage++
+                        } else {
+                            val currentList = _drugsList.value ?: emptyList()
+                            _drugsList.postValue(currentList + newDrugs)
+                            allPage++
+                        }
                     } else {
-                        Log.e("API_ERROR", "Response body is null")
+                        Log.w("API_WARNING", "No more data available!")
                     }
                 } else {
-                    val errorMessage = response.errorBody()?.string()
-                    Log.e("API_ERROR", "Error: $errorMessage")
+                    Log.e("API_ERROR", "API failed: ${response.code()} -> ${response.errorBody()?.string()}")
                 }
             } catch (e: Exception) {
-                Log.e("API_ERROR", "Exception: ${e.message}")
+                Log.e("API_ERROR", "Error fetching drugs: ${e.message}")
             } finally {
                 isLoading = false
-                loadMorePages.postValue(false)
             }
         }
     }
 
-    fun updateStatus(status: String?) {
-        currentStatus = if (status == "AVAILABLE") null else status
-        Log.d("", "Updated status: $currentStatus")
-        applyFilters()
+    fun updateDrugForm(newForm: String) {
+        _formFilter.value = newForm
+        filteredPage = 1
+        _filteredDrugs.postValue(emptyList())
+        getDrugs(isFiltered = true)
+    }
+
+    fun updateStatus(newStatus: String) {
+        _statusFilter.value = newStatus
+        Log.d("FILTER_UPDATE", "Filtering drugs by status: $newStatus")
+        getDrugs(isFiltered = _formFilter.value != "ALL")
+    }
+
+    fun resetAndFetchAllData() {
+        _formFilter.value = "ALL"
+        allPage = 1
+        _drugsList.postValue(emptyList())
+        getDrugs(isFiltered = false)
     }
 
     fun searchDrugs(query: String) {
-        searchQuery = query
-        Log.d("SEARCH_FUNCTION", "Searching for: $query")
-        applyFilters()
-    }
-
-    private fun applyFilters() {
-        val filteredList = allDrugs.filter { item ->
-            val matchesStatus = currentStatus == null || item?.status == currentStatus
-            val matchesQuery = searchQuery.isEmpty() || item?.name?.contains(searchQuery, ignoreCase = true) == true
-            matchesStatus && matchesQuery
-        }
-        Log.d("FILTER_RESULTS", "Filtered items count: ${filteredList.size}")
-        _filteredDrugs.postValue(filteredList)
-    }
-
-    fun onLoadMoreNeeded() {
-        fetchDrugs(loadMore = true)
+        _currentSearchQuery = query
     }
 }
