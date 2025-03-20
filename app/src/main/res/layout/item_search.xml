@@ -46,15 +46,14 @@
                 android:textSize="14sp"
                 android:background="@android:color/white"/>
 
-<!--            <ImageView-->
-<!--                android:id="@+id/deleteIcon"-->
-<!--                android:layout_width="42dp"-->
-<!--                android:layout_height="38dp"-->
-<!--                android:src="@drawable/delete_iconn"-->
-<!--                android:padding="8dp"-->
-<!--                android:layout_weight="1"-->
-
-<!--                android:background="@android:color/white"/>-->
+            <ImageView
+                android:id="@+id/ICONCAM"
+                android:layout_width="42dp"
+                android:layout_height="38dp"
+                android:src="@drawable/icon_cam"
+                android:padding="8dp"
+                android:layout_weight="1"
+                android:background="@android:color/white"/>
 
         </TableRow>
 

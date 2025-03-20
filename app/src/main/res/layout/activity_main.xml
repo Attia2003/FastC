@@ -56,7 +56,7 @@
                tools:listitem="@layout/item_search"
                app:layout_constraintTop_toBottomOf="@id/searchEditText"
                app:layout_constraintBottom_toTopOf="@id/cpture_BTN"
-               app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+
 
                />
 
@@ -78,6 +78,7 @@
                app:layout_constraintTop_toTopOf="@id/searchEditText"
                app:layout_constraintBottom_toBottomOf="@id/searchEditText"
                android:src="@drawable/dropdown"
+
                />
 
        </androidx.constraintlayout.widget.ConstraintLayout>

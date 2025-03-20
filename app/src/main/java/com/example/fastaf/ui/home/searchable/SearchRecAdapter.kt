@@ -9,6 +9,8 @@ import com.example.fastaf.databinding.ItemSearchBinding
 
 class SearchRecAdapter(
     private var drugsList: MutableList<ResponseSearchRecItem> = mutableListOf(),
+    private val onItemClick: (Int) -> Unit,
+    private val onCameraClicked: (Int) -> Unit
 ) : RecyclerView.Adapter<SearchRecAdapter.DrugViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DrugViewHolder {
@@ -27,13 +29,16 @@ class SearchRecAdapter(
         drugsList.addAll(newList)
         Log.d("UI_UPDATE", "Updated RecyclerView with ${newList.size} items")
         notifyDataSetChanged()
+  
     }
 
     inner class DrugViewHolder(private val binding: ItemSearchBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: ResponseSearchRecItem) {
             binding.titleName.text = item.name
             binding.type.text = item.form
-
+            binding.ICONCAM.setOnClickListener { onCameraClicked(item.id) }
+            binding.titleName.setOnClickListener { onItemClick(item.id) }
+            binding.type.setOnClickListener { onItemClick(item.id) }
         }
     }
 }

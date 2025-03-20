@@ -11,26 +11,45 @@ import kotlinx.coroutines.launch
 
 class MainViewModel : ViewModel() {
 
-    private val _drugsList = MutableLiveData<List<ResponseSearchRecItem>>()  // Holds all drugs
+    private val _drugsList = MutableLiveData<List<ResponseSearchRecItem>>()
     val drugsList: LiveData<List<ResponseSearchRecItem>> = _drugsList
 
-    private val _filteredDrugs = MutableLiveData<List<ResponseSearchRecItem>>()  // Filtered based on status
+    private val _filteredDrugs = MutableLiveData<List<ResponseSearchRecItem>>()
     val filteredDrugs: LiveData<List<ResponseSearchRecItem>> = _filteredDrugs
 
-    private val _statusFilter = MutableLiveData<String>("AVAILABLE")  // Default filter
-    val statusFilter: LiveData<String> = _statusFilter
-
-    private val _formFilter = MutableLiveData<String>("ALL")  // Default filter: "ALL" means no form filter
+    private val _formFilter = MutableLiveData<String>("ALL")
     val formFilter: LiveData<String> = _formFilter
 
-    private var _currentSearchQuery = ""
+    private val _selectedDrugId = MutableLiveData<Int?>()
+    val selectedDrugId: LiveData<Int?> get() = _selectedDrugId
+
+    private val _openCameraEvent = MutableLiveData<Int>()
+    val openCameraEvent: LiveData<Int> get() = _openCameraEvent
+
+    var _currentSearchQuery = ""
     var isLoading = false
         private set
 
     private var allPage = 1
     private var filteredPage = 1
 
-    fun getDrugs(isFiltered: Boolean) {
+    private var isFiltered = false
+
+
+    fun setFilterState(filtered: Boolean) {
+        isFiltered = filtered
+    }
+
+
+    fun resetPages() {
+        allPage = 1
+        filteredPage = 1
+        _drugsList.postValue(emptyList())
+        _filteredDrugs.postValue(emptyList())
+    }
+
+
+    fun getDrugs(isFiltered: Boolean, searchQuery: String? = null) {
         if (isLoading) return
 
         viewModelScope.launch {
@@ -38,37 +57,32 @@ class MainViewModel : ViewModel() {
                 isLoading = true
 
                 val formFilterValue = _formFilter.value
-                val isUsingFilter = isFiltered && formFilterValue != "ALL"
 
-                val currentPage = if (isUsingFilter) filteredPage else allPage
-                val formQuery: String? = if (isUsingFilter) formFilterValue else null
 
-                Log.d("API_CALL", "Fetching page=$currentPage, form=$formQuery")
+                val formQuery: String? = if (isFiltered && formFilterValue != "ALL") formFilterValue else null
+
+                Log.d("API_CALL", "Fetching page=${if (isFiltered) filteredPage else allPage}, form=$formQuery, search=$searchQuery")
 
                 val response = ApiManager.getWebService().getDrugs(
-                    page = currentPage,
+                    page = if (isFiltered) filteredPage else allPage,
                     size = 20,
-                    form = formQuery
+                    form = formQuery,
+                    name = searchQuery ?: ""
                 )
-
-                Log.d("API_CALL", "Request URL: ${response.raw().request.url}")
 
                 if (response.isSuccessful) {
                     val newDrugs = response.body() ?: emptyList()
-                    Log.d("API_RESPONSE", "Fetched ${newDrugs.size} items for page $currentPage")
 
                     if (newDrugs.isNotEmpty()) {
-                        if (isUsingFilter) {
-                            val currentList = _filteredDrugs.value ?: emptyList()
-                            _filteredDrugs.postValue(currentList + newDrugs)
+                        if (isFiltered) {
+                            _filteredDrugs.postValue((_filteredDrugs.value ?: emptyList()) + newDrugs)
                             filteredPage++
                         } else {
-                            val currentList = _drugsList.value ?: emptyList()
-                            _drugsList.postValue(currentList + newDrugs)
+                            _drugsList.postValue((_drugsList.value ?: emptyList()) + newDrugs)
                             allPage++
                         }
                     } else {
-                        Log.w("API_WARNING", "No more data available!")
+                        Log.w("API_WARNING", "No more data on page ${if (isFiltered) filteredPage else allPage}.")
                     }
                 } else {
                     Log.e("API_ERROR", "API failed: ${response.code()} -> ${response.errorBody()?.string()}")
@@ -83,25 +97,50 @@ class MainViewModel : ViewModel() {
 
     fun updateDrugForm(newForm: String) {
         _formFilter.value = newForm
-        filteredPage = 1
-        _filteredDrugs.postValue(emptyList())
-        getDrugs(isFiltered = true)
+
+
+        if (newForm == "ALL") {
+            isFiltered = false
+            allPage = 1
+            _drugsList.postValue(emptyList())
+        } else {
+            isFiltered = true
+            filteredPage = 1
+            _filteredDrugs.postValue(emptyList())
+        }
+
+
+        getDrugs(isFiltered = isFiltered)
     }
 
-    fun updateStatus(newStatus: String) {
-        _statusFilter.value = newStatus
-        Log.d("FILTER_UPDATE", "Filtering drugs by status: $newStatus")
-        getDrugs(isFiltered = _formFilter.value != "ALL")
-    }
-
-    fun resetAndFetchAllData() {
-        _formFilter.value = "ALL"
-        allPage = 1
-        _drugsList.postValue(emptyList())
-        getDrugs(isFiltered = false)
-    }
 
     fun searchDrugs(query: String) {
         _currentSearchQuery = query
+
+        val allDrugs = if (isFiltered) _filteredDrugs.value else _drugsList.value
+
+        val filteredResults = allDrugs?.filter { drug ->
+            drug.name!!.contains(query, ignoreCase = true) || drug.id.toString() == query
+        } ?: emptyList()
+
+        Log.d("SEARCH", "Query: $query | Results: ${filteredResults.size}")
+
+        if (isFiltered) {
+            _filteredDrugs.postValue(filteredResults)
+        } else {
+            _drugsList.postValue(filteredResults)
+        }
     }
+
+
+    fun setSelectedDrugId(id: Int) {
+        _selectedDrugId.value = id
+    }
+
+    // 🔥 Handle camera event
+//    fun openCam() {
+//        _selectedDrugId.value?.let { drugId ->
+//            _openCameraEvent.postValue(drugId)
+//        } ?: Log.e("Camera", "No drug selected!")
+//    }
 }
