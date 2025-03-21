@@ -9,7 +9,7 @@ import com.example.fastaf.databinding.ItemSearchBinding
 
 class SearchRecAdapter(
     private var drugsList: MutableList<ResponseSearchRecItem> = mutableListOf(),
-    private val onItemClick: (Int) -> Unit,
+    private val onDeleteClick: (Int) -> Unit,
     private val onCameraClicked: (Int) -> Unit
 ) : RecyclerView.Adapter<SearchRecAdapter.DrugViewHolder>() {
 
@@ -36,9 +36,9 @@ class SearchRecAdapter(
         fun bind(item: ResponseSearchRecItem) {
             binding.titleName.text = item.name
             binding.type.text = item.form
+
             binding.ICONCAM.setOnClickListener { onCameraClicked(item.id) }
-            binding.titleName.setOnClickListener { onItemClick(item.id) }
-            binding.type.setOnClickListener { onItemClick(item.id) }
+            binding.ICOnDELETE.setOnClickListener { onDeleteClick(item.id) }
         }
     }
 }

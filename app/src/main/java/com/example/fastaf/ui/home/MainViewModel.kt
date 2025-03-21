@@ -137,10 +137,4 @@ class MainViewModel : ViewModel() {
         _selectedDrugId.value = id
     }
 
-    // 🔥 Handle camera event
-//    fun openCam() {
-//        _selectedDrugId.value?.let { drugId ->
-//            _openCameraEvent.postValue(drugId)
-//        } ?: Log.e("Camera", "No drug selected!")
-//    }
-}
+  }

@@ -41,13 +41,12 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.getDrugs(isFiltered = false)
     }
-
     private fun setupRecyclerView() {
         adapter = SearchRecAdapter(
-            onItemClick = { viewModel.setSelectedDrugId(it) },
-            onCameraClicked = { openCam(it) }
-        )
+            onDeleteClick = { viewModel.setSelectedDrugId(it) },
+            onCameraClicked = { viewModel.setSelectedDrugId(it) }
 
+        )
         binding.RecylerDrugs.layoutManager = LinearLayoutManager(this)
         binding.RecylerDrugs.adapter = adapter
 
@@ -113,16 +112,13 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun setupFilterSpinner() {
-        val spinner: Spinner = binding.spinnerStatus
-
+        val spinner: Spinner = binding.spinnerform
         val filters = listOf(
             "ALL", "Granules", "Lotion", "Tablet", "Nose Drops", "Injection", "Infusion",
             "Film", "Other", "Spray", "Syrup", "Hair Treatment",
             "Gargle", "Oral Drop", "Paint", "Inhalations", "Cream", "Sachets",
             "Powder", "Eye Drops", "Suppositories", "Patch", "Ear Drops",
-            "Solution", "Effervescent", "Gel", "Lozenges", "Capsule",
-
-        )
+            "Solution", "Effervescent", "Gel", "Lozenges", "Capsule")
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, filters)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = adapter
@@ -136,13 +132,9 @@ class MainActivity : AppCompatActivity() {
             ) {
                 val selectedForm = parent.getItemAtPosition(position).toString()
                 viewModel.updateDrugForm(selectedForm)
-            }
-
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            }            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
     }
-
-
     private fun openCam(drugId: Int) {
         startActivity(Intent(this, CamActivity::class.java).apply { putExtra("DRUG_ID", drugId) })
     }
