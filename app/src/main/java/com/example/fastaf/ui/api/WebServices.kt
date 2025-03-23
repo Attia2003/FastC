@@ -14,11 +14,11 @@ import retrofit2.http.Query
 interface WebServices {
 
       @GET("drugs")
-     suspend  fun getDrugs(@Query("page") page: Int,
+     suspend  fun getDrugs(@Query("page") page: String,
                            @Query("size") size: Int,
                            @Query("form") form: String?=null,
-                           @Query("name")name:String="",
-                           @Query("status")status:String?=null,
+                           @Query("name") name:String="",
+                           @Query("status") status:String?=null
                            )
 
      : Response<MutableList<ResponseSearchRecItem>>
@@ -29,4 +29,7 @@ interface WebServices {
       @Multipart
       @POST("images/upload")
       suspend fun uploadImage(@Query("drugID") id: Int, @Part file: MultipartBody.Part):Response<Unit>
+
+      @GET("users/info")
+      suspend fun getUserInfo(@Query("username") username: String):Response<Unit>
 }

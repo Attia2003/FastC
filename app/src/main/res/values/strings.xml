@@ -1,3 +1,40 @@
 <resources>
     <string name="app_name">FastAf</string>
+    <string-array name="form_types">
+        <item>ALL</item>
+        <item>Tablet</item>
+        <item>Capsule</item>
+        <item>Liquid</item>
+        <item>Syrup</item>
+        <item>Injection</item>
+        <item>Effervescent</item>
+        <item>Hair Treatment</item>
+        <item>Cream</item>
+        <item>Powder</item>
+        <item>Lozenges</item>
+        <item>Ear Drops</item>
+        <item>Patch</item>
+        <item>Eye Drops</item>
+        <item>Sachets</item>
+        <item>Film</item>
+        <item>Gel</item>
+        <item>Solution</item>
+        <item>Suppositories</item>
+        <item>Infusion</item>
+        <item>Nose Drops</item>
+        <item>Gargle</item>
+        <item>Oral Drop</item>
+        <item>Paint</item>
+
+
+
+
+    </string-array>
+
+    <string-array name="status_types">
+
+        <item>AVAILABLE</item>
+        <item>DISCARDED</item>
+        <item>POSTPONED</item>
+    </string-array>
 </resources>
