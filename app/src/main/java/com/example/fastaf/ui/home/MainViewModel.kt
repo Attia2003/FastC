@@ -7,28 +7,39 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fastaf.ui.api.ApiManager
 import com.example.fastaf.ui.home.searchable.ResponseSearchRecItem
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainViewModel : ViewModel() {
 
-    private val _drugsList = MutableLiveData<List<ResponseSearchRecItem>>()
-    val drugsList: LiveData<List<ResponseSearchRecItem>> = _drugsList
+    private val _drugsList = MutableLiveData<List<ResponseSearchRecItem>?>()
+    val drugsList: MutableLiveData<List<ResponseSearchRecItem>?> = _drugsList
 
-    private val _filteredDrugs = MutableLiveData<List<ResponseSearchRecItem>>()
-    val filteredDrugs: LiveData<List<ResponseSearchRecItem>> = _filteredDrugs
+    private val _filteredDrugs = MutableLiveData<List<ResponseSearchRecItem>?>()
+    val filteredDrugs: MutableLiveData<List<ResponseSearchRecItem>?> = _filteredDrugs
 
-    private val _formFilter = MutableLiveData<String>("ALL")
-    val formFilter: LiveData<String> = _formFilter
+    private val _formFilter = MutableLiveData<Set<String>>(setOf("ALL"))
+    val formFilter: LiveData<Set<String>> = _formFilter
 
-    private val _statusFilter = MutableLiveData<String>("ALL")
+    private val _statusFilter = MutableLiveData<String>("AVAILABLE")
     val statusFilter: LiveData<String> = _statusFilter
 
     private val _selectedDrugId = MutableLiveData<Int?>()
     val selectedDrugId: LiveData<Int?> get() = _selectedDrugId
 
+    private val _hasImageFilter = MutableLiveData<Boolean?>()
+    val hasImageFilter: LiveData<Boolean?> = _hasImageFilter
+
     private val filterCache = mutableMapOf<String, List<ResponseSearchRecItem>>()
 
-   var _currentSearchQuery = ""
+    var _currentSearchQuery = ""
+
+    private var lastLoadedPage = 0
+
+    private var searchJob: Job? = null
+
+    private var lastDataCache: List<ResponseSearchRecItem>? = null
 
     var isLoading = false
         private set
@@ -44,95 +55,164 @@ class MainViewModel : ViewModel() {
         allPage = 0
         filteredPage = 0
         isLastPage = false
+        isLoading = false
+        lastLoadedPage = 0
+        lastDataCache = null
+        filterCache.clear()
+
         _drugsList.postValue(emptyList())
         _filteredDrugs.postValue(emptyList())
+        val cacheKey = "${_formFilter.value}_${_statusFilter.value}_$_currentSearchQuery"
+        filterCache.remove(cacheKey)
     }
-
 
     fun updateStatusFilter(newStatus: String) {
         _statusFilter.value = newStatus
         resetPages()
-        getDrugs(isFiltered)
+        getDrugs(isFiltered = true, searchQuery = _currentSearchQuery)
     }
 
+    fun updateHasImageFilter(option: String) {
+        _hasImageFilter.value = when (option) {
+            "seen" -> true
+            "nonseen" -> false
+            else -> null
+        }
+    }
 
     fun updateDrugForm(newForm: String) {
-        _formFilter.value = newForm
+        val currentForms = _formFilter.value?.toMutableSet() ?: mutableSetOf()
 
-        isFiltered = newForm != "ALL"
+        if (newForm == "ALL") {
+            currentForms.clear()
+            currentForms.add("ALL")
+        } else {
+            currentForms.remove("ALL")
+            if (currentForms.contains(newForm)) currentForms.remove(newForm)
+            else currentForms.add(newForm)
+        }
+
+        _formFilter.value = currentForms
+
+        isFiltered = currentForms.isNotEmpty() && !currentForms.contains("ALL")
         resetPages()
         getDrugs(isFiltered)
     }
 
 
     fun getDrugs(isFiltered: Boolean, searchQuery: String? = null) {
-        val cacheKey = "${_formFilter.value}_${_statusFilter.value}_$searchQuery"
+        val formFilterValue = _formFilter.value ?: setOf("ALL")
+        val statusFilterValue = _statusFilter.value ?: "ALL"
+        val cacheKey = "${formFilterValue}_${statusFilterValue}_$searchQuery"
+
 
         if (filterCache.containsKey(cacheKey)) {
-            if (isFiltered) _filteredDrugs.postValue(filterCache[cacheKey])
-            else _drugsList.postValue(filterCache[cacheKey])
-            return
+            val cachedData = filterCache[cacheKey]
+            if (isFiltered) _filteredDrugs.postValue(cachedData)
+            else _drugsList.postValue(cachedData)
+
+            Log.d("PAGINATION_DEBUG", "Loaded from cache for key: $cacheKey")
         }
 
         viewModelScope.launch {
             try {
                 isLoading = true
+                Log.d("PAGINATION_DEBUG", "Starting API call...")
 
-                val formFilterValue = _formFilter.value
-                val formQuery: String? = if (isFiltered && formFilterValue != "ALL") formFilterValue else null
 
-                val pageQuery = if (isFiltered) filteredPage.toString() else allPage.toString()
+                val formQuery = if (_formFilter.value?.contains("ALL") == true) null
+                else _formFilter.value?.joinToString("|")
+
+                val statusQuery = _statusFilter.value?.takeIf { it.isNotEmpty() } ?: "ALL"
+                val pageQuery = if (isFiltered) filteredPage else allPage
+
+
+                val urlPreview = buildString {
+                    append("page=$pageQuery&size=20")
+                    formQuery?.let { append("&form=$it") }
+                    append("&status=$statusQuery")
+                    searchQuery?.let { append("&name=$it") }
+                }
+
+                Log.d("PAGINATION_DEBUG", "Final API URL: $urlPreview")
+                Log.d("PAGINATION_DEBUG", "Filters -> Form: $formQuery | Status: $statusQuery | Page: $pageQuery | isFiltered: $isFiltered")
+
 
                 val response = ApiManager.getWebService().getDrugs(
-                    page = pageQuery,
+                    page = pageQuery.toString(),
                     size = 20,
                     form = formQuery,
-                    name = searchQuery ?: ""
+                    name = searchQuery ?: "",
+                    status = statusQuery,
+                    hasImage = _hasImageFilter.value
                 )
 
                 if (response.isSuccessful) {
                     val newDrugs = response.body() ?: emptyList()
+                    Log.d("PAGINATION_DEBUG", "API Success: Received ${newDrugs.size} items")
 
                     if (newDrugs.isNotEmpty()) {
-                        if (isFiltered) {
-                            val updatedList = (_filteredDrugs.value ?: emptyList()) + newDrugs
-                            _filteredDrugs.postValue(updatedList)
-                            filterCache[cacheKey] = updatedList
-                            filteredPage++
+                        val updatedList = if (isFiltered) {
+                            (_filteredDrugs.value ?: emptyList()) + newDrugs
                         } else {
-                            val updatedList = (_drugsList.value ?: emptyList()) + newDrugs
-                            _drugsList.postValue(updatedList)
-                            filterCache[cacheKey] = updatedList
-                            allPage++
+                            (_drugsList.value ?: emptyList()) + newDrugs
                         }
+
+
+                        if (isFiltered) {
+                            _filteredDrugs.postValue(updatedList)
+                            filteredPage++
+                            Log.d("PAGINATION_DEBUG", "Filtered page incremented to $filteredPage")
+                        } else {
+                            _drugsList.postValue(updatedList)
+                            allPage++
+                            Log.d("PAGINATION_DEBUG", "All page incremented to $allPage")
+                        }
+
+                        // ✅ Cache the result properly
+                        filterCache[cacheKey] = updatedList
                     } else {
-                        isLastPage = true
+                        if (pageQuery == 0) {
+                            isLastPage = true
+                            Log.d("PAGINATION_DEBUG", "No more data. Marked last page.")
+                        }
                     }
+                } else {
+                    Log.e("PAGINATION_DEBUG", "API Error: ${response.code()}")
                 }
             } catch (e: Exception) {
-                Log.e("API_ERROR", "Error fetching drugs: ${e.message}")
+                Log.e("PAGINATION_DEBUG", "Exception: ${e.message}")
             } finally {
                 isLoading = false
+                Log.d("PAGINATION_DEBUG", "Loading state reset")
             }
         }
     }
 
+    fun onSearchQueryChanged(newQuery: String) {
+        if (_currentSearchQuery != newQuery) {
+            _currentSearchQuery = newQuery
 
-    fun searchDrugs(query: String) {
-        _currentSearchQuery = query
 
-        val allDrugs = if (isFiltered) _filteredDrugs.value else _drugsList.value
+            searchJob?.cancel()
 
-        val filteredResults = allDrugs?.filter { drug ->
-            drug.name!!.contains(query, ignoreCase = true) || drug.id.toString() == query
-        } ?: emptyList()
 
-        Log.d("SEARCH", "Query: $query | Results: ${filteredResults.size}")
+            searchJob = viewModelScope.launch {
+                delay(300)
 
-        if (isFiltered) {
-            _filteredDrugs.postValue(filteredResults)
-        } else {
-            _drugsList.postValue(filteredResults)
+                allPage = 0
+                filteredPage = 0
+                isLastPage = false
+                _drugsList.value = emptyList()
+                _filteredDrugs.value = emptyList()
+
+                Log.d("SEARCH_DEBUG", "New search query: $newQuery — Resetting pagination and data")
+
+                getDrugs(
+                    isFiltered = _formFilter.value?.isNotEmpty() == true || _statusFilter.value?.isNotEmpty() == true,
+                    searchQuery = newQuery
+                )
+            }
         }
     }
 
@@ -148,12 +228,15 @@ class MainViewModel : ViewModel() {
                 val response = ApiManager.getWebService().getUpdateStatus(item.id, newStatus)
                 if (response.isSuccessful) {
                     item.status = newStatus
-
                     Log.d("STATUS_UPDATE", "Drug ${item.id} moved to $newStatus")
-
 
                     resetPages()
                     getDrugs(isFiltered = isFiltered, searchQuery = _currentSearchQuery)
+
+                    when (newStatus) {
+                        "DISCARDED" -> Log.d("STATUS", "Drug moved to DISCARDED")
+                        "POSTPONED" -> Log.d("STATUS", "Drug moved to POSTPONED")
+                    }
                 } else {
                     Log.e("STATUS_UPDATE_ERROR", "Failed to update status: ${response.code()}")
                 }
@@ -162,4 +245,13 @@ class MainViewModel : ViewModel() {
             }
         }
     }
+
+
+    fun cachePageData(page: Int, data: List<ResponseSearchRecItem>) {
+        lastLoadedPage = page
+        lastDataCache = data
+    }
+
+    fun getCachedData(): List<ResponseSearchRecItem>? = lastDataCache
+    fun getLastPage(): Int = lastLoadedPage
 }

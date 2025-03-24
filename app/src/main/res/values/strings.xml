@@ -3,32 +3,31 @@
     <string-array name="form_types">
         <item>ALL</item>
         <item>Tablet</item>
-        <item>Capsule</item>
-        <item>Liquid</item>
-        <item>Syrup</item>
         <item>Injection</item>
-        <item>Effervescent</item>
-        <item>Hair Treatment</item>
-        <item>Cream</item>
-        <item>Powder</item>
-        <item>Lozenges</item>
-        <item>Ear Drops</item>
-        <item>Patch</item>
-        <item>Eye Drops</item>
-        <item>Sachets</item>
-        <item>Film</item>
-        <item>Gel</item>
-        <item>Solution</item>
-        <item>Suppositories</item>
+        <item>Capsule</item>
+        <item>Syrup</item>
         <item>Infusion</item>
-        <item>Nose Drops</item>
-        <item>Gargle</item>
+        <item>Cream</item>
+        <item>Eye Drops</item>
+        <item>Inhalations</item>
+        <item>Gel</item>
+        <item>Suppositories</item>
+        <item>Solution</item>
+        <item>Granules</item>
         <item>Oral Drop</item>
+        <item>Other</item>
+        <item>Sachets</item>
+        <item>Effervescent</item>
+        <item>Spray</item>
+        <item>Film</item>
+        <item>Patch</item>
+        <item>Lotion</item>
+        <item>Ear Erops</item>
+        <item>Powder</item>
+        <item>Hair Treatment</item>
+        <item>Lozenges</item>
         <item>Paint</item>
-
-
-
-
+        <item>Gargle</item>
     </string-array>
 
     <string-array name="status_types">
@@ -36,5 +35,9 @@
         <item>AVAILABLE</item>
         <item>DISCARDED</item>
         <item>POSTPONED</item>
+    </string-array>
+    <string-array name="imaged_types">
+        <item>seen</item>
+        <item>nonseen</item>
     </string-array>
 </resources>

@@ -18,8 +18,9 @@ interface WebServices {
                            @Query("size") size: Int,
                            @Query("form") form: String?=null,
                            @Query("name") name:String="",
-                           @Query("status") status:String?=null
-                           )
+                           @Query("status") status:String?=null,
+                           @Query("hasImage")hasImage: Boolean? = null
+      )
 
      : Response<MutableList<ResponseSearchRecItem>>
 

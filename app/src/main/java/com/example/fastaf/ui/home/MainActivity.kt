@@ -17,6 +17,10 @@ import com.example.fastaf.R
 import com.example.fastaf.databinding.ActivityMainBinding
 import com.example.fastaf.ui.home.searchable.ResponseSearchRecItem
 import com.example.fastaf.ui.home.searchable.SearchRecAdapter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -36,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         setupFilters()
         setupSearch()
 
-        viewModel.getDrugs(false)
+        viewModel.getDrugs(isFiltered = false, searchQuery = viewModel._currentSearchQuery)
     }
 
     private fun setupRecyclerView() {
@@ -57,12 +61,17 @@ class MainActivity : AppCompatActivity() {
                 val totalItemCount = layoutManager.itemCount
                 val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
 
+                Log.d("PAGINATION_DEBUG", "Scroll detected — visible: $visibleItemCount, total: $totalItemCount, firstVisible: $firstVisibleItemPosition")
+
                 if (!viewModel.isLoading && !viewModel.isLastPage) {
-                    if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount &&
-                        firstVisibleItemPosition >= 0 &&
-                        totalItemCount >= 20
+                    if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount - 5 &&
+                        firstVisibleItemPosition >= 0
                     ) {
-                        viewModel.getDrugs(isFiltered = viewModel.isFiltered, searchQuery = viewModel._currentSearchQuery)
+                        Log.d("PAGINATION_DEBUG", "Triggering next page load")
+                        viewModel.getDrugs(
+                            isFiltered = viewModel.isFiltered,
+                            searchQuery = viewModel._currentSearchQuery
+                        )
                     }
                 }
             }
@@ -70,14 +79,15 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+
     private fun setupObservers() {
         viewModel.drugsList.observe(this) { drugs ->
-            if (!viewModel.isFiltered) adapter.updateData(drugs)
+            if (!viewModel.isFiltered) drugs?.let { adapter.updateData(it) }
             isLoadingMore = false
         }
 
         viewModel.filteredDrugs.observe(this) { drugs ->
-            if (viewModel.isFiltered) adapter.updateData(drugs)
+            if (viewModel.isFiltered) drugs?.let { adapter.updateData(it) }
             isLoadingMore = false
         }
 
@@ -95,8 +105,15 @@ class MainActivity : AppCompatActivity() {
                 viewModel.setSelectedDrugId(null)
             }
         }
+        viewModel.hasImageFilter.observe(this) { filter ->
+            val index = when (filter) {
+                true -> 1
+                false -> 2
+                else -> 0
+            }
+            binding.spinnerimaged.setSelection(index)
+        }
     }
-
     private fun setupFilters() {
 
         ArrayAdapter.createFromResource(
@@ -141,7 +158,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupSearch() {
         binding.searchEditText.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                viewModel.searchDrugs(s.toString())
+                viewModel.onSearchQueryChanged(s.toString())
             }
 
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -151,14 +168,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun showConfirmDiscardDialog(drug: ResponseSearchRecItem) {
         AlertDialog.Builder(this)
-            .setTitle("Move to Discarded?")
-            .setMessage("Are you sure you want to move ${drug.name} to DISCARDED?")
-            .setPositiveButton("Yes") { _, _ ->
+            .setTitle("Change Drug Status")
+            .setMessage("Move ${drug.name} to which status?")
+            .setPositiveButton("Discard") { _, _ ->
                 viewModel.updateDrugStatus(drug, "DISCARDED")
                 Toast.makeText(this, "${drug.name} moved to DISCARDED", Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("No", null)
+            .setNegativeButton("Postpone") { _, _ ->
+                viewModel.updateDrugStatus(drug, "POSTPONED")
+                Toast.makeText(this, "${drug.name} moved to POSTPONED", Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("Cancel", null)
             .show()
+
     }
 
 }

@@ -63,7 +63,7 @@
                    android:layout_width="wrap_content"
                    android:layout_height="wrap_content"
                    app:layout_constraintStart_toStartOf="parent"
-                   android:spinnerMode="dialog"
+                   android:spinnerMode="dropdown"
                    android:src="@drawable/dropdown"
                    />
                <Spinner
@@ -71,8 +71,16 @@
                    android:layout_width="wrap_content"
                    android:layout_height="wrap_content"
                    app:layout_constraintStart_toStartOf="parent"
-                   android:spinnerMode="dialog"
+                   android:spinnerMode="dropdown"
                    android:src="@drawable/dropdown"
+                   />
+               <Spinner
+                   android:id="@+id/spinnerimaged"
+                   android:layout_width="wrap_content"
+                   android:layout_height="wrap_content"
+                   android:spinnerMode="dropdown"
+                   android:src="@drawable/dropdown"
+                   app:layout_constraintStart_toStartOf="parent"
                    />
            </LinearLayout>
 
