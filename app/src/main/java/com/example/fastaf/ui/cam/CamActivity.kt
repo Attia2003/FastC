@@ -1,5 +1,6 @@
 package com.example.fastaf.ui.cam
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -7,14 +8,20 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import com.example.fastaf.R
 import com.example.fastaf.databinding.ActivityCamBinding
 import com.example.fastaf.ui.api.ApiManager
+import com.example.fastaf.ui.home.MainActivity
+import com.example.fastaf.ui.login.LoginViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,25 +39,29 @@ class CamActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCamBinding
     private lateinit var cameraExecutor: ExecutorService
     private var imageCapture: ImageCapture? = null
+    private val viewModel: CamViewModel by viewModels()
 
     private val cameraPermission = Manifest.permission.CAMERA
     private val requestCodeCamera = 100
     private var drugId: Int? = null
+    private var username: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityCamBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_cam)
 
         drugId = intent.getIntExtra("DRUG_ID", -1)
-        if (drugId == -1) {
-            Log.e("IDPASSEDSUCCESS", "No ID Passed")
-            Toast.makeText(this, "No drug id provided!", Toast.LENGTH_SHORT).show()
+        username = intent.getStringExtra("USER_NAME")
+
+        if (drugId == -1 || username.isNullOrEmpty()) {
+            Toast.makeText(this, "Invalid drug ID or username!", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
 
+        Log.d("UserInfo", "User taking photo: $username")
 
         checkCameraPermission()
 
@@ -59,6 +70,28 @@ class CamActivity : AppCompatActivity() {
         binding.captureButton.setOnClickListener {
             capturePhoto()
         }
+        initview()
+        subscribeToLiveData()
+    }
+
+    fun subscribeToLiveData() {
+        Log.d("funcStart", "Event received:")
+        viewModel.event.observe(this) {
+            when (it) {
+                BackToHomeActivity.NavigateToHome -> starthomeactivity()
+            }
+        }
+    }
+
+    fun starthomeactivity(){
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
+
+    fun initview(){
+        binding.vm = viewModel
+        binding.lifecycleOwner = this
     }
 
     private fun checkCameraPermission() {
@@ -148,16 +181,18 @@ class CamActivity : AppCompatActivity() {
                     file.name,
                     file.asRequestBody("image/jpeg".toMediaTypeOrNull())
                 )
-                val response = ApiManager.getWebService().uploadImage((drugId ?: 0), filePart)
+                val response = ApiManager.getWebService().uploadImage(
+                    username ?: "Unknown",
+                    drugId ?: 0,
+                    filePart
+                )
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         Log.d("UploadSuccess", "Response: ${response.body()}")
                         Toast.makeText(this@CamActivity, "Upload successful!", Toast.LENGTH_SHORT).show()
                     } else {
                         Log.e("UploadFailed", "Response code: ${response.code()}, message: ${response.message()}")
-
                         Log.e("UploadFailed", "Error body: ${response.errorBody()?.string()}")
-
                         Toast.makeText(this@CamActivity, "Upload failed: ${response.message()}", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -179,12 +214,11 @@ class CamActivity : AppCompatActivity() {
         if (::cameraExecutor.isInitialized) {
             cameraExecutor.shutdown()
         }
-        
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
             cameraProvider.unbindAll()
         }, ContextCompat.getMainExecutor(this))
-
-}
+    }
 }

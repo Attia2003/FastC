@@ -1,5 +1,6 @@
 package com.example.fastaf.ui.home
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -15,20 +16,18 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.fastaf.R
 import com.example.fastaf.databinding.ActivityMainBinding
+import com.example.fastaf.ui.cam.CamActivity
+import com.example.fastaf.ui.createuser.AdminUserActivity
 import com.example.fastaf.ui.home.searchable.ResponseSearchRecItem
 import com.example.fastaf.ui.home.searchable.SearchRecAdapter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import com.example.fastaf.ui.input.InputNewDrugActivity
+import com.example.fastaf.ui.util.PrefsUtils
+
 
 class MainActivity : AppCompatActivity() {
-
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
     private lateinit var adapter: SearchRecAdapter
-
-    private var isLoadingMore = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,16 +36,28 @@ class MainActivity : AppCompatActivity() {
 
         setupRecyclerView()
         setupObservers()
-        setupFilters()
         setupSearch()
+        setupAddDrugButton()
+        navigateToAdminUser()
+        setupSwipeToRefresh()
 
-        viewModel.getDrugs(isFiltered = false, searchQuery = viewModel._currentSearchQuery)
+        val loggedInUser = PrefsUtils.getUserFromPrefs(this)
+        viewModel.setUser(loggedInUser)
+
+        val isAdmin = intent.getBooleanExtra("isAdmin", false)
+        viewModel.setAdminStatus(isAdmin)
+
+        val shouldRefresh = intent.getBooleanExtra("REFRESH_DRUGS", false)
+        if (shouldRefresh) viewModel.resetData()
+
+        viewModel.fetchDrugs(viewModel._currentSearchQuery)
     }
 
     private fun setupRecyclerView() {
         adapter = SearchRecAdapter(
-            onCameraClicked = { drugId -> viewModel.setSelectedDrugId(drugId) },
-            onDeleteClick = { drug -> showConfirmDiscardDialog(drug) }
+            onCameraClicked = { drugId ->
+                openCamera(drugId)
+            }
         )
 
         binding.RecylerDrugs.adapter = adapter
@@ -55,103 +66,40 @@ class MainActivity : AppCompatActivity() {
         binding.RecylerDrugs.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
-
                 val layoutManager = recyclerView.layoutManager as LinearLayoutManager
                 val visibleItemCount = layoutManager.childCount
                 val totalItemCount = layoutManager.itemCount
                 val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
 
-                Log.d("PAGINATION_DEBUG", "Scroll detected — visible: $visibleItemCount, total: $totalItemCount, firstVisible: $firstVisibleItemPosition")
-
-                if (!viewModel.isLoading && !viewModel.isLastPage) {
-                    if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount - 5 &&
-                        firstVisibleItemPosition >= 0
-                    ) {
-                        Log.d("PAGINATION_DEBUG", "Triggering next page load")
-                        viewModel.getDrugs(
-                            isFiltered = viewModel.isFiltered,
-                            searchQuery = viewModel._currentSearchQuery
-                        )
-                    }
+                if (!viewModel.isLoading && !viewModel.isLastPage &&
+                    visibleItemCount + firstVisibleItemPosition >= totalItemCount - 5 && firstVisibleItemPosition >= 0
+                ) {
+                    viewModel.fetchDrugs(viewModel._currentSearchQuery)
                 }
             }
         })
-
     }
-
 
     private fun setupObservers() {
         viewModel.drugsList.observe(this) { drugs ->
-            if (!viewModel.isFiltered) drugs?.let { adapter.updateData(it) }
-            isLoadingMore = false
-        }
-
-        viewModel.filteredDrugs.observe(this) { drugs ->
-            if (viewModel.isFiltered) drugs?.let { adapter.updateData(it) }
-            isLoadingMore = false
-        }
-
-        viewModel.formFilter.observe(this) { form ->
-            Log.d("FILTER", "Form filter set to: $form")
-        }
-
-        viewModel.statusFilter.observe(this) { status ->
-            Log.d("FILTER", "Status filter set to: $status")
+            drugs?.let {
+                if (viewModel.currentPage == 0) {
+                    adapter.updateData(it)
+                } else {
+                    adapter.updateData(it)
+                }
+            }
         }
 
         viewModel.selectedDrugId.observe(this) { id ->
             id?.let {
-                Toast.makeText(this, "Selected drug ID: $it", Toast.LENGTH_SHORT).show()
+                openCamera(it)
                 viewModel.setSelectedDrugId(null)
             }
         }
-        viewModel.hasImageFilter.observe(this) { filter ->
-            val index = when (filter) {
-                true -> 1
-                false -> 2
-                else -> 0
-            }
-            binding.spinnerimaged.setSelection(index)
-        }
-    }
-    private fun setupFilters() {
 
-        ArrayAdapter.createFromResource(
-            this,
-            R.array.form_types,
-            android.R.layout.simple_spinner_item
-        ).also { adapter ->
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            binding.spinnerform.adapter = adapter
-        }
-
-        binding.spinnerform.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                val selectedForm = parent.getItemAtPosition(position).toString()
-                viewModel.updateDrugForm(selectedForm)
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-
-        ArrayAdapter.createFromResource(
-            this,
-            R.array.status_types,
-            android.R.layout.simple_spinner_item
-        ).also { adapter ->
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            binding.spinnerstatus.adapter = adapter
-        }
-
-        binding.spinnerstatus.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                val selectedStatus = parent.getItemAtPosition(position).toString()
-                viewModel.updateStatusFilter(selectedStatus)
-                viewModel.resetPages()
-                viewModel.getDrugs(isFiltered = true, searchQuery = viewModel._currentSearchQuery)
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        viewModel.isRefreshing.observe(this) { isRefreshing ->
+            binding.swipeRefreshLayout.isRefreshing = isRefreshing
         }
     }
 
@@ -166,21 +114,37 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun showConfirmDiscardDialog(drug: ResponseSearchRecItem) {
-        AlertDialog.Builder(this)
-            .setTitle("Change Drug Status")
-            .setMessage("Move ${drug.name} to which status?")
-            .setPositiveButton("Discard") { _, _ ->
-                viewModel.updateDrugStatus(drug, "DISCARDED")
-                Toast.makeText(this, "${drug.name} moved to DISCARDED", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Postpone") { _, _ ->
-                viewModel.updateDrugStatus(drug, "POSTPONED")
-                Toast.makeText(this, "${drug.name} moved to POSTPONED", Toast.LENGTH_SHORT).show()
-            }
-            .setNeutralButton("Cancel", null)
-            .show()
+    private fun openCamera(drugId: Int) {
+        val loggedInUser = PrefsUtils.getUserFromPrefs(this) ?: "Unknown"
+        val intent = Intent(this, CamActivity::class.java).apply {
+            putExtra("DRUG_ID", drugId)
+            putExtra("USER_NAME", loggedInUser)
+        }
+        startActivity(intent)
+    }
 
+    private fun setupAddDrugButton() {
+        binding.GoToInput.setOnClickListener {
+            val intent = Intent(this, InputNewDrugActivity::class.java)
+            startActivity(intent)
+        }
+    }
+
+    private fun navigateToAdminUser() {
+        val isAdmin = intent.getBooleanExtra("isAdmin", false)
+        Log.d("MainActivity", "Admin status: $isAdmin")
+
+        if (isAdmin) {
+            binding.IconAdminCreateUser.visibility = View.VISIBLE
+        } else {
+            binding.IconAdminCreateUser.visibility = View.GONE
+        }
+    }
+
+    private fun setupSwipeToRefresh() {
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            viewModel.refreshDrugs()
+        }
     }
 
 }

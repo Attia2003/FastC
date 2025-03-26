@@ -22,6 +22,7 @@ class CamViewModel:ViewModel() {
 
     private val _uploadResult = MutableLiveData<String?>()
     val uploadResult: LiveData<String?> = _uploadResult
+    val event = MutableLiveData<BackToHomeActivity>()
 
     fun capturePhoto(bitmap: Bitmap) {
         _showConfirmDialog.value = bitmap
@@ -30,29 +31,29 @@ class CamViewModel:ViewModel() {
     fun resetDialog() {
         _showConfirmDialog.value = null
     }
-
-    fun uploadPhoto(bitmap: Bitmap, drugId: Int) {
-        Log.d("CamViewModel", "Uploading photo for drugId: $drugId")
-        viewModelScope.launch {
-            try {
-                val file = bitmapToFile(bitmap)
-                val requestBody = file.asRequestBody()
-                val multipartBody = MultipartBody.Part.createFormData("image", file.name, requestBody)
-
-                val response = ApiManager.getWebService().uploadImage(drugId, multipartBody)
-                Log.d("uploadsuccess", "Uploading photo for drugId: $drugId")
-                if (response.isSuccessful) {
-                    _uploadResult.value = "Image uploaded successfully!"
-                } else {
-                    _uploadResult.value = "Upload failed: ${response.message()}"
-                }
-
-            } catch (e: Exception) {
-                Log.e("CamViewModel", "Upload error", e)
-                _uploadResult.value = "Error: ${e.message}"
-            }
-        }
-    }
+//
+//    fun uploadPhoto(bitmap: Bitmap, drugId: Int) {
+//        Log.d("CamViewModel", "Uploading photo for drugId: $drugId")
+//        viewModelScope.launch {
+//            try {
+//                val file = bitmapToFile(bitmap)
+//                val requestBody = file.asRequestBody()
+//                val multipartBody = MultipartBody.Part.createFormData("image", file.name, requestBody)
+//
+//                val response = ApiManager.getWebService().uploadImage(drugId, multipartBody)
+//                Log.d("uploadsuccess", "Uploading photo for drugId: $drugId")
+//                if (response.isSuccessful) {
+//                    _uploadResult.value = "Image uploaded successfully!"
+//                } else {
+//                    _uploadResult.value = "Upload failed: ${response.message()}"
+//                }
+//
+//            } catch (e: Exception) {
+//                Log.e("CamViewModel", "Upload error", e)
+//                _uploadResult.value = "Error: ${e.message}"
+//            }
+//        }
+//    }
 
     private fun bitmapToFile(bitmap: Bitmap): File {
         val file = File.createTempFile("temp_image", ".jpg")
@@ -61,4 +62,9 @@ class CamViewModel:ViewModel() {
         }
         return file
     }
+
+    fun backtohohomeactivity(){
+        event.postValue((BackToHomeActivity.NavigateToHome))
+    }
+
 }

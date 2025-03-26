@@ -11,7 +11,6 @@ import com.example.fastaf.databinding.ItemSearchBinding
 
 class SearchRecAdapter(
     private var drugsList: MutableList<ResponseSearchRecItem> = mutableListOf(),
-    private val onDeleteClick: (ResponseSearchRecItem) -> Unit,
     private val onCameraClicked: (Int) -> Unit
 ) : RecyclerView.Adapter<SearchRecAdapter.DrugViewHolder>() {
 
@@ -39,11 +38,11 @@ class SearchRecAdapter(
     }
 
 
-    fun removeItem(item: ResponseSearchRecItem) {
-        val newList = drugsList.toMutableList()
-        newList.remove(item)
-        updateData(newList)
-    }
+//    fun removeItem(item: ResponseSearchRecItem) {
+//        val newList = drugsList.toMutableList()
+//        newList.remove(item)
+//        updateData(newList)
+//    }
 
     inner class DrugViewHolder(private val binding: ItemSearchBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: ResponseSearchRecItem) {
@@ -51,13 +50,7 @@ class SearchRecAdapter(
             binding.type.text = item.form
 
             binding.ICONCAM.setOnClickListener { onCameraClicked(item.id) }
-            binding.ICOnDELETE.setOnClickListener {
-                if (item.status == "AVAILABLE") {
-                    onDeleteClick(item)
-                } else {
-                    Toast.makeText(binding.root.context, "Already ${item.status}", Toast.LENGTH_SHORT).show()
-                }
-            }
+
         }
     }
 }

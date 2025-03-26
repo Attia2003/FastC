@@ -47,13 +47,7 @@
                 android:src="@drawable/icon_cam"
                 android:padding="8dp"
                 android:background="@android:color/white"/>
-            <ImageView
-                android:id="@+id/ICOnDELETE"
-                android:layout_width="42dp"
-                android:layout_height="38dp"
-                android:src="@drawable/delete_iconn"
-                android:padding="8dp"
-                android:background="@android:color/white"/>
+
 
         </TableRow>
 

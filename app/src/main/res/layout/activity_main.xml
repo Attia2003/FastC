@@ -2,89 +2,66 @@
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
     tools:context=".ui.home.MainActivity">
 
     <data>
         <variable
             name="vm"
             type="com.example.fastaf.ui.home.MainViewModel" />
-        
     </data>
 
-       <androidx.constraintlayout.widget.ConstraintLayout
-           android:layout_width="match_parent"
-           android:layout_height="match_parent">
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
+            <ImageView
+                android:id="@+id/GoToInput"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:src="@drawable/ic_addassign"
+                app:layout_constraintStart_toEndOf="@id/searchEditText"
+                app:layout_constraintTop_toTopOf="@id/searchEditText"
+                app:layout_constraintBottom_toBottomOf="@id/searchEditText"
+                android:layout_marginStart="13dp" />
 
-           <EditText
-               android:id="@+id/searchEditText"
-               android:layout_width="350dp"
-               android:layout_height="wrap_content"
-               android:hint="Search..."
-               android:padding="12dp"
-               app:layout_constraintTop_toTopOf="parent"
-               android:background="@android:drawable/editbox_background"
-               android:drawableStart="@android:drawable/ic_menu_search"
-               android:inputType="text"
-               android:layout_marginBottom="5dp"
-               tools:ignore="MissingConstraints" />
+            <EditText
+                android:id="@+id/searchEditText"
+                android:layout_width="350dp"
+                android:layout_height="wrap_content"
+                android:hint="Search..."
+                android:padding="12dp"
+                app:layout_constraintTop_toTopOf="parent"
+                android:background="@android:drawable/editbox_background"
+                android:drawableStart="@android:drawable/ic_menu_search"
+                android:inputType="text"
+                android:layout_marginBottom="5dp"
+                tools:ignore="MissingConstraints" />
 
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/RecylerDrugs"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                tools:listitem="@layout/item_search"
+                app:layout_constraintTop_toBottomOf="@id/searchEditText"
+                app:layout_constraintBottom_toTopOf="@id/IconAdminCreateUser"
+                android:layout_marginTop="10dp" />
 
-           <androidx.recyclerview.widget.RecyclerView
-               android:id="@+id/RecylerDrugs"
-               android:layout_width="match_parent"
-               android:layout_height="0dp"
-               tools:listitem="@layout/item_search"
-               app:layout_constraintTop_toBottomOf="@id/spinnersfilters"
-               android:layout_marginTop="10dp"
-               />
+            <ImageView
+                android:id="@+id/IconAdminCreateUser"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:src="@drawable/icon_admin"
+                android:layout_marginBottom="25dp" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
-           <ProgressBar
-               android:id="@+id/Progresspar"
-               android:layout_width="wrap_content"
-               android:layout_height="wrap_content"
-               app:layout_constraintStart_toStartOf="parent"
-               app:layout_constraintEnd_toEndOf="parent"
-               app:layout_constraintTop_toTopOf="parent"
-               app:layout_constraintBottom_toBottomOf="parent"/>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-           <LinearLayout
-               android:id="@+id/spinnersfilters"
-               android:layout_width="match_parent"
-               android:layout_height="wrap_content"
-               app:layout_constraintTop_toBottomOf="@id/searchEditText"
-               android:orientation="horizontal"
-               android:layout_marginTop="8dp"
-               >
-               <Spinner
-                   android:id="@+id/spinnerform"
-                   android:layout_width="wrap_content"
-                   android:layout_height="wrap_content"
-                   app:layout_constraintStart_toStartOf="parent"
-                   android:spinnerMode="dropdown"
-                   android:src="@drawable/dropdown"
-                   />
-               <Spinner
-                   android:id="@+id/spinnerstatus"
-                   android:layout_width="wrap_content"
-                   android:layout_height="wrap_content"
-                   app:layout_constraintStart_toStartOf="parent"
-                   android:spinnerMode="dropdown"
-                   android:src="@drawable/dropdown"
-                   />
-               <Spinner
-                   android:id="@+id/spinnerimaged"
-                   android:layout_width="wrap_content"
-                   android:layout_height="wrap_content"
-                   android:spinnerMode="dropdown"
-                   android:src="@drawable/dropdown"
-                   app:layout_constraintStart_toStartOf="parent"
-                   />
-           </LinearLayout>
-
-
-
-       </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

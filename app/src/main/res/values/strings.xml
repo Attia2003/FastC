@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">FastAf</string>
-    <string-array name="form_types">
-        <item>ALL</item>
+    <string-array name="form_drug_filter">
+
         <item>Tablet</item>
         <item>Injection</item>
         <item>Capsule</item>
@@ -30,12 +30,12 @@
         <item>Gargle</item>
     </string-array>
 
-    <string-array name="status_types">
+    <array name="roles">
+          <item>USER</item>
+        <item>ADMIN</item>
 
-        <item>AVAILABLE</item>
-        <item>DISCARDED</item>
-        <item>POSTPONED</item>
-    </string-array>
+    </array>
+
     <string-array name="imaged_types">
         <item>seen</item>
         <item>nonseen</item>
